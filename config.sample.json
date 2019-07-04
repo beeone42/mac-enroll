@@ -2,6 +2,7 @@
     "host":"0.0.0.0",
     "port":"8080",
     "debug":"True",
+    "quiet":"False",
     "domain":"42school.tld",
     "domain_r":"10.in-addr.arpa",
     "db_host":"bigbro.42school.tld",

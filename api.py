@@ -17,7 +17,6 @@ def open_and_load_config():
         sys.exit(1)
 
 def connect(db):
-    print "connecting psql/%s..." % db
     con = psycopg2.connect(host = config['db_host'],
                            user = config['db_user'],
                            password = config['db_pass'],
@@ -57,11 +56,8 @@ def insert_dhcp(name, mac, ip, subnet):
     cursor.execute("SELECT mac_address, ip_address FROM host WHERE  mac_address = '%s' OR ip_address = '%s';" % (mac, ip))
     res = cursor.fetchone()
     if (res != None):
-        print res
-        print "ip/mac already exists !"
         return False
     q = "INSERT INTO host (name, mac_address, ip_address, subnet_id) VALUES ('%s', '%s', '%s', %d);" % (name, mac, ip, subnet)
-    print q
     cursor.execute(q)
     con.commit()
     con.close()
@@ -72,10 +68,8 @@ def insert_dns(name, ip, zone_id, name_r, ip_r, zone_r):
     cursor.execute("SELECT host, data FROM record WHERE  host = '%s' OR data = '%s';" % (name, ip))
     res = cursor.fetchone()
     if (res != None):
-        print res
-        print "host/ip already exists !"
         return False
-
+    
     q = "INSERT INTO record (host, data, type, view, zone_id) VALUES (%s, %s, 'PTR', 'Internal', %s) RETURNING id;"
     res = cursor.execute(q, (ip_r, name_r, zone_r))
     id_r = cursor.fetchone()[0]
@@ -102,10 +96,14 @@ def do_enroll(name, mac):
     name_r = "%s.%s." % (name, config["domain"])
     
     if (insert_dhcp(name, mac, ip, subnet) == False):
-        return "dhcp insert failed"
+        print "*** %s : %s  !!! FAILED !!!" % (name, ip)
+        return '{"code":101, "message":"dhcp insert failed"}'
+    
     if (insert_dns(name, ip, zone, name_r, ip_r, zone_r) == False):
-        return "dns insert failed"
-    return "ok"
+        return '{"code":102, "message":"dns insert failed"}'
+
+    print "--- %s : %s" % (name, ip)
+    return '{"code":200,"message":"Success!"}'
 
 
 @route('/')
@@ -118,13 +116,11 @@ def enroll(name, mac):
         return "bad mac address"
     if (check_name(name) != True):
         return "bad name"
-    res = do_enroll(name, mac)
-    return "%s/%s/%s" % (name, mac, res)
+    return do_enroll(name, mac)
 
 if __name__ == "__main__":
     config = open_and_load_config()
-    print config
     try:
-        run(host=config["host"], port=config["port"], debug=config["debug"])
+        run(host=config["host"], port=config["port"], debug=config["debug"], quiet=config["quiet"])
     except Exception as e:
         print e
