@@ -1,0 +1,2 @@
+bottle==0.12.16
+psycopg2-binary==2.8.3

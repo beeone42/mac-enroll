@@ -1,0 +1,12 @@
+{
+    "host":"0.0.0.0",
+    "port":"8080",
+    "debug":"True",
+    "domain":"42school.tld",
+    "domain_r":"10.in-addr.arpa",
+    "db_host":"bigbro.42school.tld",
+    "db_dns" :"dns",
+    "db_dhcp":"dhcp",
+    "db_user":"changeme",
+    "db_pass":"changeme"
+}
