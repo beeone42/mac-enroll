@@ -2,7 +2,7 @@ from bottle import route, run
 import subprocess, os, json, sys, re, psycopg2
 
 CONFIG_FILE = 'config.json'
-NAME_RE     = re.compile("c([1-3])r([1-9][0-9]?)p([1-9][0-9]?)$")
+NAME_RE     = re.compile("([!]?)c([1-3])r([1-9][0-9]?)s([1-9][0-9]?)$")
 
 """
 Open and load a file at the json format
@@ -26,7 +26,6 @@ def connect(db):
 
         
 def check_name(name):
-    # if re.match("^c[1-3]r[1-9][0-9]?p[1-9][0-9]?$", name.lower()):
     if re.match(NAME_RE, name.lower()):
         return True
     return False;
@@ -51,21 +50,28 @@ def find_zone(domain):
     con.close()
     return zone[0]
 
-def insert_dhcp(name, mac, ip, subnet):
+def insert_dhcp(name, mac, ip, subnet, update):
     con, cursor = connect("dhcp")
-    cursor.execute("SELECT mac_address, ip_address FROM host WHERE  mac_address = '%s' OR ip_address = '%s';" % (mac, ip))
+    cursor.execute("SELECT id, mac_address, ip_address FROM host WHERE  mac_address = '%s' OR ip_address = '%s';" % (mac, ip))
     res = cursor.fetchone()
-    if (res != None):
+    if ((update == False) and (res != None)):
         return False
+
+    if (update):
+        q = "uuu : %s update mac to %s" % (name, mac)
+        cursor.execute(q)
+
     q = "INSERT INTO host (name, mac_address, ip_address, subnet_id) VALUES ('%s', '%s', '%s', %d);" % (name, mac, ip, subnet)
     cursor.execute(q)
     con.commit()
     con.close()
     return True
     
-def insert_dns(name, ip, zone_id, name_r, ip_r, zone_r):
+def insert_dns(name, ip, zone_id, name_r, ip_r, zone_r, update):
+    if (update):
+        return True
     con, cursor = connect("dns")
-    cursor.execute("SELECT host, data FROM record WHERE  host = '%s' OR data = '%s';" % (name, ip))
+    cursor.execute("SELECT id, reverse_id, host, data FROM record WHERE  host = '%s' OR data = '%s';" % (name, ip))
     res = cursor.fetchone()
     if (res != None):
         return False
@@ -82,10 +88,12 @@ def insert_dns(name, ip, zone_id, name_r, ip_r, zone_r):
     return True
     
 def do_enroll(name, mac):
-    res = re.match(NAME_RE, name )
-    cluster = res.group(1)
-    row     = res.group(2)
-    pos     = res.group(3)
+    res     = re.match(NAME_RE, name )
+    update  = res.group(1) == '!'
+    name    = name.replace(res.group(1), '')
+    cluster = res.group(2)
+    row     = res.group(3)
+    pos     = res.group(4)
     ip      = "10.1%s.%s.%s" % (cluster, row, pos)
     ip_r    = "%s.%s.1%s"    % (pos, row, cluster)
     net     = "10.1%s.0.0"   % (cluster)
@@ -95,11 +103,11 @@ def do_enroll(name, mac):
     zone_r = find_zone(config["domain_r"]);
     name_r = "%s.%s." % (name, config["domain"])
     
-    if (insert_dhcp(name, mac, ip, subnet) == False):
+    if (insert_dhcp(name, mac, ip, subnet, update) == False):
         print "*** %s : %s  !!! FAILED !!!" % (name, ip)
         return '{"code":101, "message":"dhcp insert failed"}'
     
-    if (insert_dns(name, ip, zone, name_r, ip_r, zone_r) == False):
+    if (insert_dns(name, ip, zone, name_r, ip_r, zone_r, update) == False):
         return '{"code":102, "message":"dns insert failed"}'
 
     print "--- %s : %s" % (name, ip)
