@@ -2,7 +2,7 @@ from bottle import route, run
 import subprocess, os, json, sys, re, psycopg2
 
 CONFIG_FILE = 'config.json'
-NAME_RE     = re.compile("([!]?)c([1-3])r([1-9][0-9]?)s([1-9][0-9]?)$")
+NAME_RE     = re.compile("([!]?)c([1-6])r([1-9][0-9]?)s([1-9][0-9]?)$")
 
 """
 Open and load a file at the json format
