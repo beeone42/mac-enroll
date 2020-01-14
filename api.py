@@ -58,7 +58,7 @@ def insert_dhcp(name, mac, ip, subnet, update):
         return False
 
     if (update):
-        print "uuu : %s update mac to %s" % (name, mac)
+        print "uuu %s update mac to %s" % (name, mac)
         q = "DELETE FROM host WHERE id = %s;" % res[0]
         cursor.execute(q)
 
